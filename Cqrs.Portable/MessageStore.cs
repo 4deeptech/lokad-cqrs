@@ -42,7 +42,7 @@ namespace Lokad.Cqrs
                     {
                         objects[i] = _serializer.ReadMessage(mem);
                     }
-                    yield return new StoreRecord(key, objects, record.StoreVersion, record.StreamVersion);
+                    yield return new StoreRecord(key, objects, record.StoreVersion, record.StreamVersion, attribs);
                 }
             }
         }
@@ -68,7 +68,7 @@ namespace Lokad.Cqrs
                     {
                         result[i] = _serializer.ReadMessage(mem);
                     }
-                    yield return new StoreRecord(record.Key, result, record.StoreVersion, record.StreamVersion);
+                    yield return new StoreRecord(record.Key, result, record.StoreVersion, record.StreamVersion, attribs);
                 }
             }
         }
@@ -106,14 +106,16 @@ namespace Lokad.Cqrs
         public readonly long StoreVersion;
         public readonly long StreamVersion;
         public readonly string Key;
+        public readonly MessageAttribute[] Attributes;
 
 
-        public StoreRecord(string key, object[] items, long storeVersion, long streamVersion)
+        public StoreRecord(string key, object[] items, long storeVersion, long streamVersion,MessageAttribute[] attributes)
         {
             Items = items;
             StoreVersion = storeVersion;
             StreamVersion = streamVersion;
             Key = key;
+            Attributes = attributes;
         }
     }
 }
