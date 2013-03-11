@@ -68,6 +68,19 @@ namespace Lokad.Cqrs
                         _sender.Send(item, envelopeId);
                     }
                 }
+                //else
+                //{
+                //    for (int i = 0; i < e.Items.Length; i++)
+                //    {
+                //        // predetermined id to kick in event deduplication
+                //        // if server crashes somehow
+                //        var envelopeId = "esp-" + e.StoreVersion + "-" + i;
+                //        var item = e.Items[i];
+
+                //        publishedCount += 1;
+                //        //_sender.Send(item, envelopeId);
+                //    }
+                //}
                 currentPosition = e.StoreVersion;
             }
             var result = new PublishResult(initialPosition, currentPosition, count);
@@ -93,7 +106,7 @@ namespace Lokad.Cqrs
                         currentPosition = _storage.GetSingletonOrNew<PublishCounter>().Position;
                     }
                     // publish events, if any
-                    var publishResult = PublishEventsIfAnyNew(currentPosition.Value, 25);
+                    var publishResult = PublishEventsIfAnyNew(currentPosition.Value, 50);
                     if (publishResult.Changed)
                     {
                         // ok, we are changed, persist that to survive crashes
