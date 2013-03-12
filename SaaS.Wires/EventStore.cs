@@ -15,7 +15,7 @@ namespace SaaS.Wires
             _store = store;
         }
 
-        public void AppendEventsToStream(IIdentity id, long originalVersion, ICollection<IEvent> events)
+        public void AppendEventsToStream(IIdentity id, long streamVersion, ICollection<IEvent> events)
         {
             if (events.Count == 0) return;
             // functional events don't have an identity
@@ -23,7 +23,7 @@ namespace SaaS.Wires
 
             try
             {
-                _store.AppendToStore(name, MessageAttribute.Empty, originalVersion, events.Cast<object>().ToArray());
+                _store.AppendToStore(name, MessageAttribute.Empty, streamVersion, events.Cast<object>().ToArray());
             }
             catch (AppendOnlyStoreConcurrencyException e)
             {

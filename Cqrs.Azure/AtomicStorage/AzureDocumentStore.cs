@@ -53,11 +53,12 @@ namespace Lokad.Cqrs.AtomicStorage
         public IEnumerable<DocumentRecord> EnumerateContents(string bucket)
         {
             var subdir = _client.GetBlobDirectoryReference(bucket);
-            var l = subdir.ListBlobs(new BlobRequestOptions {UseFlatBlobListing = true});
             if (!ContainerExist(subdir.Container))
                 yield break;
+
+            var items = subdir.ListBlobs(new BlobRequestOptions {UseFlatBlobListing = true});
  
-            foreach (var item in l)
+            foreach (var item in items)
             {
                 var blob = subdir.GetBlobReference(item.Uri.ToString());
                 var rel = subdir.Uri.MakeRelativeUri(item.Uri).ToString();
@@ -85,10 +86,12 @@ namespace Lokad.Cqrs.AtomicStorage
         public void WriteContents(string bucket, IEnumerable<DocumentRecord> records)
         {
             var cloudBlobDirectory = _client.GetBlobDirectoryReference(bucket);
-            foreach (var atomicRecord in records)
-            {
-                cloudBlobDirectory.GetBlobReference(atomicRecord.Key).UploadByteArray(atomicRecord.Read());
-            }
+
+            records.AsParallel()
+                .WithDegreeOfParallelism(Environment.ProcessorCount * 12)
+                .ForAll(atomicRecord => cloudBlobDirectory
+                    .GetBlobReference(atomicRecord.Key)
+                    .UploadByteArray(atomicRecord.Read()));
         }
 
         

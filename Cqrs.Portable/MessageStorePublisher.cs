@@ -36,7 +36,7 @@ namespace Lokad.Cqrs
             {
                 InitialPosition = initialPosition;
                 FinalPosition = finalPosition;
-                
+
 
                 Changed = InitialPosition != FinalPosition;
                 // thanks to Slav Ivanyuk for fixing finding this typo
@@ -53,7 +53,7 @@ namespace Lokad.Cqrs
             {
                 if (e.StoreVersion < currentPosition)
                 {
-                    throw new InvalidOperationException("Retrieved record with wrong position");
+                    throw new InvalidOperationException(string.Format("Retrieved record with position less than current. Store versions {0} <= current position {1}", e.StoreVersion, currentPosition));
                 }
                 if (_recordShouldBePublished(e))
                 {
@@ -111,15 +111,15 @@ namespace Lokad.Cqrs
                     {
                         // ok, we are changed, persist that to survive crashes
                         var output = _storage.UpdateSingletonEnforcingNew<PublishCounter>(c =>
+                        {
+                            if (c.Position != publishResult.InitialPosition)
                             {
-                                if (c.Position != publishResult.InitialPosition)
-                                {
-                                    throw new InvalidOperationException("Somebody wrote in parallel. Blow up!");
-                                }
-                                // we are good - update ES
-                                c.Position = publishResult.FinalPosition;
+                                throw new InvalidOperationException("Somebody wrote in parallel. Blow up!");
+                            }
+                            // we are good - update ES
+                            c.Position = publishResult.FinalPosition;
 
-                            });
+                        });
                         currentPosition = output.Position;
                     }
                     if (!publishResult.HasMoreWork)

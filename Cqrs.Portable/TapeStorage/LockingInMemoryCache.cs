@@ -15,7 +15,7 @@ namespace Lokad.Cqrs.TapeStorage
         ConcurrentDictionary<string, DataWithVersion[]> _cacheByKey = new ConcurrentDictionary<string, DataWithVersion[]>();
         DataWithKey[] _cacheFull = new DataWithKey[0];
 
-        public long ReloadEverything(IEnumerable<StorageFrameDecoded> sfd)
+        public void ReloadEverything(IEnumerable<StorageFrameDecoded> sfd)
         {
             _thread.EnterWriteLock();
             try
@@ -44,8 +44,7 @@ namespace Lokad.Cqrs.TapeStorage
 
                 _cacheFull = cacheFullBuilder.ToArray();
                 _cacheByKey = new ConcurrentDictionary<string, DataWithVersion[]>(streamPointerBuilder.Select(p => new KeyValuePair<string, DataWithVersion[]>(p.Key, p.Value.ToArray())));
-
-                return storeVersion;
+                _storeVersion = storeVersion;
             }
             finally
             {
@@ -59,12 +58,18 @@ namespace Lokad.Cqrs.TapeStorage
 
             Array.Copy(source, copy, source.Length);
             copy[source.Length] = item;
-            
+
 
             return copy;
         }
 
-        public void Append(string streamName, byte[] data, long newStoreVersion, Action<long> commitStreamVersion, long expectedStreamVersion = -1)
+        long _storeVersion;
+
+        public long StoreVersion { get { return _storeVersion; } }
+
+        public delegate void OnCommit(long streamVersion, long storeVersion);
+
+        public void ConcurrentAppend(string streamName, byte[] data, OnCommit commit, long expectedStreamVersion = -1)
         {
             _thread.EnterWriteLock();
 
@@ -77,17 +82,22 @@ namespace Lokad.Cqrs.TapeStorage
                         throw new AppendOnlyStoreConcurrencyException(expectedStreamVersion, list.Length, streamName);
                 }
                 long newStreamVersion = list.Length + 1;
+                long newStoreVersion = _storeVersion + 1;
+
+                commit(expectedStreamVersion, newStoreVersion);
+
+                // update in-memory cache only after real commit completed
+
                 var record = new DataWithVersion(newStreamVersion, data, newStoreVersion);
                 _cacheFull = ImmutableAdd(_cacheFull, new DataWithKey(streamName, data, newStreamVersion, newStoreVersion));
                 _cacheByKey.AddOrUpdate(streamName, s => new[] { record }, (s, records) => ImmutableAdd(records, record));
-
-                commitStreamVersion(newStreamVersion);
+                _storeVersion = newStoreVersion;
             }
             finally
             {
                 _thread.ExitWriteLock();
             }
-            
+
         }
 
         public IEnumerable<DataWithVersion> ReadRecords(string streamName, long afterVersion, int maxCount)
@@ -102,14 +112,14 @@ namespace Lokad.Cqrs.TapeStorage
             DataWithVersion[] list;
             var result = _cacheByKey.TryGetValue(streamName, out list) ? list : Enumerable.Empty<DataWithVersion>();
 
-            return result.Where(d => d.StoreVersion > afterVersion).Take(maxCount);
+            return result.Where(version => version.StoreVersion > afterVersion).Take(maxCount);
 
         }
 
         public IEnumerable<DataWithKey> ReadRecords(long afterVersion, int maxCount)
         {
             // collection is immutable so we don't care about locks
-            return _cacheFull.Where(d => d.StoreVersion > afterVersion).Take(maxCount);
+            return _cacheFull.Where(key => key.StoreVersion > afterVersion).Take(maxCount);
         }
 
         public void Clear(Action onCommit)
@@ -120,6 +130,7 @@ namespace Lokad.Cqrs.TapeStorage
                 onCommit();
                 _cacheFull = new DataWithKey[0];
                 _cacheByKey.Clear();
+                _storeVersion = 0;
             }
             finally
             {
