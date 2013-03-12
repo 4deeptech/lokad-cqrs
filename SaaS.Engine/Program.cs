@@ -23,10 +23,7 @@ namespace SaaS.Engine
                 using (var engine = env.BuildEngine(cts.Token))
                 {
                     var task = engine.Start(cts.Token);
-                    for (int i = 1; i < 100; i++)
-                    {
-                        env.SendToCommandRouter.Send(new CreateSecurityAggregate(new SecurityId(i)));
-                    }
+                    env.SendToCommandRouter.Send(new CreateSecurityAggregate(new SecurityId(1)));
 
                     Console.WriteLine(@"Press enter to stop");
                     Console.ReadLine();

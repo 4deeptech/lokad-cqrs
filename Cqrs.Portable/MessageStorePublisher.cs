@@ -106,7 +106,7 @@ namespace Lokad.Cqrs
                         currentPosition = _storage.GetSingletonOrNew<PublishCounter>().Position;
                     }
                     // publish events, if any
-                    var publishResult = PublishEventsIfAnyNew(currentPosition.Value, 50);
+                    var publishResult = PublishEventsIfAnyNew(currentPosition.Value, 25);
                     if (publishResult.Changed)
                     {
                         // ok, we are changed, persist that to survive crashes
