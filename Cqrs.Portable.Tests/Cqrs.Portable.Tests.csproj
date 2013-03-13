@@ -79,6 +79,15 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Partition\StatelessFileQueueReaderTest.cs" />
     <Compile Include="StorageFramesEvilTest.cs" />
+    <Compile Include="TapeStorage\LockingInMemoryCacheTests\fixture_with_cache_helpers.cs" />
+    <Compile Include="TapeStorage\LockingInMemoryCacheTests\when_checking_store_version.cs" />
+    <Compile Include="TapeStorage\LockingInMemoryCacheTests\when_clearing_cache.cs" />
+    <Compile Include="TapeStorage\LockingInMemoryCacheTests\when_doing_concurrent_append.cs" />
+    <Compile Include="TapeStorage\LockingInMemoryCacheTests\when_reading_all_given_empty_cache.cs" />
+    <Compile Include="TapeStorage\LockingInMemoryCacheTests\when_reading_all_given_filled_cache.cs" />
+    <Compile Include="TapeStorage\LockingInMemoryCacheTests\when_reading_stream_from_empty_cache.cs" />
+    <Compile Include="TapeStorage\LockingInMemoryCacheTests\when_reading_stream_from_loaded_cache.cs" />
+    <Compile Include="TapeStorage\LockingInMemoryCacheTests\when_reloading_all.cs" />
     <Compile Include="TapeStorage\MemoryAppendOnlyStoreTest.cs" />
   </ItemGroup>
   <ItemGroup>

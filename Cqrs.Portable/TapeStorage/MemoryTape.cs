@@ -7,8 +7,7 @@ namespace Lokad.Cqrs.TapeStorage
 {
     public sealed class MemoryAppendOnlyStore : IAppendOnlyStore
     {
-        readonly ConcurrentDictionary<string, IList<DataWithVersion>> _dict = new ConcurrentDictionary<string, IList<DataWithVersion>>();
-        IList<DataWithKey> _all = new List<DataWithKey>(); 
+        readonly LockingInMemoryCache _cache = new LockingInMemoryCache();
  
 
         public void InitializeForWriting()
@@ -18,58 +17,17 @@ namespace Lokad.Cqrs.TapeStorage
 
         public void Append(string streamName, byte[] data, long expectedStreamVersion = -1)
         {
-            if (data == null)
-                throw new ArgumentNullException("data");
-
-            if (data.Length == 0)
-                throw new ArgumentException("Buffer must contain at least one byte.");
-
-            
-            var result = _dict.AddOrUpdate(streamName, s =>
-            {
-
-                if (expectedStreamVersion >= 0)
-                {
-                    if (expectedStreamVersion != 0)
-                        throw new AppendOnlyStoreConcurrencyException(expectedStreamVersion, 0, streamName);
-                }
-                var records = new List<DataWithVersion> { new DataWithVersion(1, data,1) };
-                return records;
-            }, (s, list) =>
-            {
-                var version = list.Count;
-                if (expectedStreamVersion >= 0)
-                {
-                    if (expectedStreamVersion != version)
-                        throw new AppendOnlyStoreConcurrencyException(expectedStreamVersion, version, streamName);
-                }
-                return list.Concat(new[] { new DataWithVersion(version + 1, data, _all.Count+1) }).ToList();
-            });
-            
-            _all = new List<DataWithKey>(_all) { new DataWithKey(streamName, data, result.Count, _all.Count+1)};
+            _cache.ConcurrentAppend(streamName, data, (version, storeVersion) => { }, expectedStreamVersion);
         }
 
-        public IEnumerable<DataWithVersion> ReadRecords(string streamName, long startingFrom, int maxCount)
+        public IEnumerable<DataWithKey> ReadRecords(string streamName, long startingFrom, int maxCount)
         {
-            if (startingFrom < 0)
-                throw new ArgumentOutOfRangeException("startingFrom", "Must be zero or greater.");
-
-            if (maxCount <= 0)
-                throw new ArgumentOutOfRangeException("maxCount", "Must be more than zero.");
-
-            IList<DataWithVersion> bytes;
-            if (_dict.TryGetValue(streamName, out bytes))
-            {
-                foreach (var bytese in bytes.Skip((int)startingFrom).Take(maxCount))
-                {
-                    yield return bytese;
-                }
-            }
+            return _cache.ReadStream(streamName, startingFrom, maxCount);
         }
 
         public IEnumerable<DataWithKey> ReadRecords(long startingFrom, int maxCount)
         {
-            return _all.Skip((int) startingFrom).Take(maxCount);
+            return _cache.ReadAll(startingFrom, maxCount);
         }
 
         public void Close()
@@ -79,13 +37,12 @@ namespace Lokad.Cqrs.TapeStorage
 
         public void ResetStore()
         {
-            _dict.Clear();
-            _all.Clear();
+            _cache.Clear(() => { });
         }
 
         public long GetCurrentVersion()
         {
-            return _all.Count;
+            return _cache.StoreVersion;
         }
 
         public void Dispose()

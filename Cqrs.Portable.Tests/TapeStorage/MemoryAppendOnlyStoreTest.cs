@@ -109,7 +109,7 @@ namespace Cqrs.Portable.Tests.TapeStorage
             for (int i = 0; i < 2; i++)
                 _store.Append(stream, Encoding.UTF8.GetBytes("test message" + i));
 
-            var records = _store.ReadRecords(-1, Int32.MaxValue).ToArray();
+            var records = _store.ReadRecords(0, Int32.MaxValue).ToArray();
 
             Assert.AreEqual(currentVersion + 2, records.Length);
 

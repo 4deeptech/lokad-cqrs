@@ -82,7 +82,7 @@ namespace Cqrs.Portable.Tests.TapeStorage
 
             Assert.AreEqual(1, data.Length);
             Assert.AreEqual("test-key", data[0].Key);
-            Assert.AreEqual(0, data[0].StreamVersion);
+            Assert.AreEqual(1, data[0].StreamVersion);
             Assert.AreEqual("test message", Encoding.UTF8.GetString(data[0].Data));
             Assert.IsFalse(File.Exists(Path.Combine(_storePath, "1.dat")));
         }
@@ -91,7 +91,8 @@ namespace Cqrs.Portable.Tests.TapeStorage
         public void load_cache_when_incorrect_data_file()
         {
             //write frame
-            using (var stream = new FileStream(Path.Combine(_storePath, "0.dat"), FileMode.OpenOrCreate, FileAccess.Write, FileShare.ReadWrite))
+            var path = Path.Combine(_storePath, "0.dat");
+            using (var stream = new FileStream(path, FileMode.OpenOrCreate, FileAccess.Write, FileShare.ReadWrite))
                 StorageFramesEvil.WriteFrame("test-key", 0, Encoding.UTF8.GetBytes("test message"), stream);
 
             //write incorrect frame
@@ -104,7 +105,7 @@ namespace Cqrs.Portable.Tests.TapeStorage
 
             Assert.AreEqual(1, data.Length);
             Assert.AreEqual("test-key", data[0].Key);
-            Assert.AreEqual(0, data[0].StreamVersion);
+            Assert.AreEqual(1, data[0].StreamVersion);
             Assert.AreEqual("test message", Encoding.UTF8.GetString(data[0].Data));
             Assert.IsTrue(File.Exists(Path.Combine(_storePath, "1.dat")));
         }
@@ -198,7 +199,7 @@ namespace Cqrs.Portable.Tests.TapeStorage
             for (int i = 0; i < 2; i++)
                 _store.Append(stream, Encoding.UTF8.GetBytes("test message" + i));
 
-            var records = _store.ReadRecords(-1, Int32.MaxValue).ToArray();
+            var records = _store.ReadRecords(0, Int32.MaxValue).ToArray();
 
             Assert.AreEqual(currentVersion + 2, records.Length);
 
