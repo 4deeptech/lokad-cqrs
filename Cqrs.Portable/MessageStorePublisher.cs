@@ -65,7 +65,8 @@ namespace Lokad.Cqrs
                         var item = e.Items[i];
 
                         publishedCount += 1;
-                        _sender.Send(item, envelopeId);
+                        //DMF 05/24/2013 needs to send attributes here so they carry through!
+                        _sender.Send(item, envelopeId, e.Attributes);
                     }
                 }
                 //else
